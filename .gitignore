@@ -105,3 +105,4 @@ venv.bak/
 aws.cfg
 .vscode/settings.json
 .vscode/launch.json
+PROJECT3.code-workspace
