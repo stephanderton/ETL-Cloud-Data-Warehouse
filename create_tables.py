@@ -5,7 +5,7 @@ from sql_queries import create_table_queries, drop_table_queries
 
 def drop_tables(cur, conn):
     """
-    Drop all tables from the Sparkify database.
+    Drop all tables from the sparkify database.
     
     Execute each query from the *drop_table_queries* list; each query
     deletes a specific table from the Sparkify database.
@@ -31,7 +31,7 @@ def drop_tables(cur, conn):
 
 def create_tables(cur, conn):
     """
-    Create the tables for a clean Sparkify database.
+    Create the tables for a clean sparkify database.
     
     Execute each query from the *create_table_queries* list; each query
     creates a specific table in the Sparkify database.
@@ -58,7 +58,7 @@ def create_tables(cur, conn):
 
 def main():
     """
-        Create clean tables in a new instance of the Sparkify data warehouse.
+        Create clean tables in a new instance of the sparkify data warehouse.
     """
     
     config = configparser.ConfigParser()
