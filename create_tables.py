@@ -58,7 +58,11 @@ def create_tables(cur, conn):
 
 def main():
     """
-        Create clean tables in a new instance of the sparkify data warehouse.
+    Create clean tables in a new instance of the sparkify data warehouse.
+
+    Instantiate a session to the Postgres database on the Redshift cluster, 
+    and acquire a cursor object to process SQL queries.
+
     """
     
     config = configparser.ConfigParser()
@@ -74,7 +78,6 @@ def main():
     except Exception as e:
         print("Error: Could not make connection to the sparkify DWH")
         print(e)
-
 
     drop_tables(cur, conn)
     create_tables(cur, conn)

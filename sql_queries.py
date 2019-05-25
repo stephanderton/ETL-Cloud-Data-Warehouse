@@ -22,25 +22,25 @@ time_table_drop           = "DROP TABLE IF EXISTS time"
 staging_events_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_events
     (
-        stg_e_eventkey        INTEGER           IDENTITY(0,1),
-        stg_e_artist          VARCHAR,
-        stg_e_auth            VARCHAR,
-        stg_e_firstName       VARCHAR,
-        stg_e_gender          VARCHAR,
-        stg_e_itemInSession   INTEGER,
-        stg_e_lastName        VARCHAR,
-        stg_e_length          DOUBLE PRECISION,
-        stg_e_level           VARCHAR,
-        stg_e_location        VARCHAR,
-        stg_e_method          VARCHAR,
-        stg_e_page            VARCHAR,
-        stg_e_registration    VARCHAR,
-        stg_e_sessionId       INTEGER,
-        stg_e_song            VARCHAR,
-        stg_e_status          VARCHAR,
-        stg_e_ts              VARCHAR,
-        stg_e_userAgent       VARCHAR,
-        stg_e_userId          INTEGER
+        stg_e_event_key         INTEGER          IDENTITY(0,1),
+        stg_e_artist            VARCHAR,
+        stg_e_auth              VARCHAR,
+        stg_e_first_name        VARCHAR,
+        stg_e_gender            VARCHAR,
+        stg_e_item_in_session   INTEGER,
+        stg_e_last_name         VARCHAR,
+        stg_e_length            DOUBLE PRECISION,
+        stg_e_level             VARCHAR,
+        stg_e_location          VARCHAR,
+        stg_e_method            VARCHAR,
+        stg_e_page              VARCHAR,
+        stg_e_registration      VARCHAR,
+        stg_e_session_id        INTEGER,
+        stg_e_song              VARCHAR,
+        stg_e_status            VARCHAR,
+        stg_e_ts                VARCHAR,
+        stg_e_user_agent        VARCHAR,
+        stg_e_user_id           INTEGER
     )
     SORTKEY( stg_e_ts, stg_e_userId );
 """)
@@ -142,7 +142,7 @@ staging_songs_copy = ("""
     FROM     {}
     IAM_ROLE {}
     JSON     'auto'
-""").format(config['S3']['LOG_DATA'],
+""").format(config['S3']['SONG_DATA'],
             config['IAM_ROLE']['ARN']
            )
 
@@ -150,18 +150,57 @@ staging_songs_copy = ("""
 # FINAL TABLES
 
 songplay_table_insert = ("""
+    INSERT INTO songplays (
+        sp_start_time, sp_user_id, sp_level, sp_song_id, sp_artist_id,
+        sp_session_id, sp_location, sp_user_agent
+    )
+    SELECT      stg_e_ts, stg_e_user_id, stg_e_level, stg_s_song_id, stg_s_artist_id,
+                stg_e_session_id, stg_e_location, stg_e_user_agent
+    FROM        staging_events
+    JOIN        staging_songs
+    ON          stg_e_song = stg_s_title
+    WHERE       stg_e_page = 'NextSong'
+    ORDER BY    (sp_start_time, sp_user_id)
+
+    DO UPDATE SET
+        sp_level = EXCLUDED.level,
+        sp_song_id = EXCLUDED.song_id,
+        sp_artist_id = EXCLUDED.artist_id,
+        sp_session_id = EXCLUDED.session_id,
+        sp_location = EXCLUDED.location,
+        sp_user_agent = EXCLUDED.user_agent
 """)
 
 user_table_insert = ("""
+    INSERT INTO users (
+        u_userId, u_firstName, u_lastName, u_gender, u_level
+    )
+
+    WHERE   stg_e_page == 'NextSong'
 """)
 
 song_table_insert = ("""
+    INSERT INTO songs (
+        s_song_id, s_title, s_artist_id, s_year, s_duration
+    )
+
+    WHERE   stg_e_page == 'NextSong'
 """)
 
 artist_table_insert = ("""
+    INSERT INTO artists (
+        a_artist_id, a_name, a_location, a_latitude, a_longitude
+    )
+
+    WHERE   stg_e_page == 'NextSong'
 """)
 
 time_table_insert = ("""
+    INSERT INTO times(
+        t_start_time, t_hour, t_day, t_week, t_month, t_year, t_weekday   
+    )
+
+    WHERE   stg_e_page == 'NextSong'
 """)
 
 #------------------------------------------------------------------------------
