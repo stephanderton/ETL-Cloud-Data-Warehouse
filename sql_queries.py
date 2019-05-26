@@ -34,15 +34,15 @@ staging_events_table_create = ("""
         stg_e_location          VARCHAR,
         stg_e_method            VARCHAR,
         stg_e_page              VARCHAR,
-        stg_e_registration      VARCHAR,
+        stg_e_registration      INTEGER,
         stg_e_session_id        INTEGER,
         stg_e_song              VARCHAR,
-        stg_e_status            VARCHAR,
-        stg_e_ts                VARCHAR,
+        stg_e_status            INTEGER,
+        stg_e_ts                INTEGER,
         stg_e_user_agent        VARCHAR,
         stg_e_user_id           INTEGER
     )
-    SORTKEY( stg_e_ts, stg_e_userId );
+    SORTKEY( stg_e_ts, stg_e_user_id );
 """)
 
 staging_songs_table_create = ("""
@@ -151,56 +151,59 @@ staging_songs_copy = ("""
 
 songplay_table_insert = ("""
     INSERT INTO songplays (
-        sp_start_time, sp_user_id, sp_level, sp_song_id, sp_artist_id,
-        sp_session_id, sp_location, sp_user_agent
+        sp_start_time, sp_user_id, sp_level, sp_song_id, 
+        sp_artist_id, sp_session_id, sp_location, sp_user_agent
     )
-    SELECT      stg_e_ts, stg_e_user_id, stg_e_level, stg_s_song_id, stg_s_artist_id,
-                stg_e_session_id, stg_e_location, stg_e_user_agent
-    FROM        staging_events
-    JOIN        staging_songs
-    ON          stg_e_song = stg_s_title
-    WHERE       stg_e_page = 'NextSong'
-    ORDER BY    (sp_start_time, sp_user_id)
-
-    DO UPDATE SET
-        sp_level = EXCLUDED.level,
-        sp_song_id = EXCLUDED.song_id,
-        sp_artist_id = EXCLUDED.artist_id,
-        sp_session_id = EXCLUDED.session_id,
-        sp_location = EXCLUDED.location,
-        sp_user_agent = EXCLUDED.user_agent
+    (
+        SELECT      stg_e_ts, stg_e_user_id, stg_e_level, stg_s_song_id,
+                    stg_s_artist_id, stg_e_session_id, stg_e_location, stg_e_user_agent
+        FROM        (
+                        SELECT  *
+                        FROM    staging_events
+                        WHERE   stg_e_page = 'NextSong'
+                    ), staging_songs
+        WHERE       stg_e_song = stg_s_title
+        ORDER BY    (sp_start_time, sp_user_id)
+    )
 """)
 
 user_table_insert = ("""
     INSERT INTO users (
-        u_userId, u_firstName, u_lastName, u_gender, u_level
+        u_user_id, u_first_name, u_last_name, u_gender, u_level
     )
-
-    WHERE   stg_e_page == 'NextSong'
+    SELECT  DISTINCT stg_e_user_id, 
+            stg_e_first_name, stg_e_last_name, stg_e_gender, stg_e_level
+    FROM    staging_events
+    WHERE   stg_e_page = 'NextSong'
 """)
 
 song_table_insert = ("""
     INSERT INTO songs (
         s_song_id, s_title, s_artist_id, s_year, s_duration
     )
-
-    WHERE   stg_e_page == 'NextSong'
+    SELECT  DISTINCT stg_s_song_id,
+            stg_s_title, stg_s_artist_id, stg_s_year, stg_s_duration
+    FROM    staging_songs
 """)
 
 artist_table_insert = ("""
     INSERT INTO artists (
         a_artist_id, a_name, a_location, a_latitude, a_longitude
     )
-
-    WHERE   stg_e_page == 'NextSong'
+    SELECT  DISTINCT stg_s_artist_id,
+            stg_s_artist_name, stg_s_artist_location,
+            stg_s_artist_latitude, stg_s_artist_longitude
+    FROM    staging_songs
 """)
 
 time_table_insert = ("""
     INSERT INTO times(
         t_start_time, t_hour, t_day, t_week, t_month, t_year, t_weekday   
     )
+    SELECT  DISTINCT stg_e_ts,
 
-    WHERE   stg_e_page == 'NextSong'
+    FROM    staging_events
+    WHERE   stg_e_page = 'NextSong'
 """)
 
 #------------------------------------------------------------------------------
@@ -223,12 +226,18 @@ drop_table_queries = [staging_events_table_drop,
                       time_table_drop
                      ]
 
-copy_table_queries = [staging_events_copy, 
-                      staging_songs_copy
+# copy_table_queries = [staging_events_copy, 
+#                       staging_songs_copy
+#                      ]
+copy_table_queries = [staging_songs_copy
                      ]
-insert_table_queries = [songplay_table_insert, 
-                        user_table_insert,
-                        song_table_insert, 
-                        artist_table_insert, 
-                        time_table_insert
+
+# insert_table_queries = [songplay_table_insert, 
+#                         user_table_insert,
+#                         song_table_insert, 
+#                         artist_table_insert, 
+#                         time_table_insert
+#                        ]
+insert_table_queries = [song_table_insert, 
+                        artist_table_insert
                        ]
