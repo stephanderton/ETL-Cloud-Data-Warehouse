@@ -1,24 +1,24 @@
 import logging
 import time
 
-LOGFILE = "./logs/test-{}.log".format(time.strftime('%Y%m%d'))
-
-# logging.basicConfig(format = '%(asctime)s :  %(message)s', datefmt = '%I:%M:%S %p',
-#                     filename = LOGFILE, level = logging.INFO)
+LOGFILE     = "./logs/test-{}.log".format(time.strftime('%Y%m%d'))
+FORMAT      = '%(asctime)s :  %(message)s'
+FORMAT_DATE = '%I:%M:%S %p'
 
 # create logger
-logger = logging.getLogger(LOGFILE)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger()
 
-# create console handler and set level to debug
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+# create file handler
+fh = logging.FileHandler(LOGFILE)
 
 # create formatter
-formatter = logging.Formatter(fmt = '%(asctime)s :  %(message)s', datefmt = '%I:%M:%S %p')
+formatter = logging.Formatter(fmt = FORMAT, datefmt = FORMAT_DATE)
 
-# add formatter to ch
-ch.setFormatter(formatter)
+# add formatter to fh
+fh.setFormatter(formatter)
 
-# add ch to logger
-logger.addHandler(ch)
+# add fh to logger
+logger.addHandler(fh)
+
+# set level to info
+logger.setLevel(logging.INFO)

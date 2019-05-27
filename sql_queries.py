@@ -22,56 +22,56 @@ time_table_drop           = "DROP TABLE IF EXISTS time"
 staging_events_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_events
     (
-        stg_e_event_key         INTEGER          IDENTITY(0,1),
-        stg_e_artist            VARCHAR,
-        stg_e_auth              VARCHAR,
-        stg_e_first_name        VARCHAR,
-        stg_e_gender            VARCHAR,
-        stg_e_item_in_session   INTEGER,
-        stg_e_last_name         VARCHAR,
-        stg_e_length            DOUBLE PRECISION,
-        stg_e_level             VARCHAR,
-        stg_e_location          VARCHAR,
-        stg_e_method            VARCHAR,
-        stg_e_page              VARCHAR,
-        stg_e_registration      INTEGER,
-        stg_e_session_id        INTEGER,
-        stg_e_song              VARCHAR,
-        stg_e_status            INTEGER,
-        stg_e_ts                INTEGER,
-        stg_e_user_agent        VARCHAR,
-        stg_e_user_id           INTEGER
+        event_key           INTEGER          IDENTITY(0,1),
+        artist              VARCHAR(MAX),
+        auth                VARCHAR(MAX),
+        firstName           VARCHAR(MAX),
+        gender              VARCHAR(MAX),
+        itemInSession       INTEGER,
+        lastName            VARCHAR(MAX),
+        length              DOUBLE PRECISION,
+        level               VARCHAR(MAX),
+        location            VARCHAR(MAX),
+        method              VARCHAR(MAX),
+        page                VARCHAR(MAX),
+        registration        DECIMAL(15,1),
+        sessionId           INTEGER,
+        song                VARCHAR(MAX),
+        status              INTEGER,
+        ts                  BIGINT,
+        userAgent           VARCHAR(MAX),
+        userId              VARCHAR(22)
     )
-    SORTKEY( stg_e_ts, stg_e_user_id );
+    SORTKEY( ts, userId );
 """)
 
 staging_songs_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_songs
     (
-        stg_s_song_id            VARCHAR,
-        stg_s_artist_id          VARCHAR,
-        stg_s_artist_latitude    DOUBLE PRECISION,
-        stg_s_artist_longitude   DOUBLE PRECISION,
-        stg_s_artist_location    VARCHAR,
-        stg_s_artist_name        VARCHAR,
-        stg_s_title              VARCHAR            SORTKEY,
-        stg_s_duration           DOUBLE PRECISION,
-        stg_s_year               INTEGER
+        song_id            VARCHAR(MAX),
+        artist_id          VARCHAR(MAX),
+        artist_latitude    DOUBLE PRECISION,
+        artist_longitude   DOUBLE PRECISION,
+        artist_location    VARCHAR(MAX),
+        artist_name        VARCHAR(MAX),
+        title              VARCHAR(MAX)           SORTKEY,
+        duration           DOUBLE PRECISION,
+        year               INTEGER
     );
 """)
 
 songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS songplays
     (
-        sp_songplay_id  INTEGER         IDENTITY(0,1),
-        sp_start_time   TIMESTAMP       NOT NULL,
-        sp_user_id      INTEGER         NOT NULL,
-        sp_level        VARCHAR(8)      NOT NULL,
-        sp_song_id      VARCHAR(22)     NOT NULL,
-        sp_artist_id    VARCHAR(22)     NOT NULL    DISTKEY,
-        sp_session_id   INTEGER         NOT NULL,
-        sp_location     VARCHAR,
-        sp_user_agent   VARCHAR
+        sp_songplay_id      INTEGER             IDENTITY(0,1),
+        sp_start_time       TIMESTAMP           NOT NULL,
+        sp_user_id          INTEGER             NOT NULL,
+        sp_level            VARCHAR(8)          NOT NULL,
+        sp_song_id          VARCHAR(22)         NOT NULL,
+        sp_artist_id        VARCHAR(22)         NOT NULL        DISTKEY,
+        sp_session_id       INTEGER             NOT NULL,
+        sp_location         VARCHAR(MAX),
+        sp_user_agent       VARCHAR(MAX)
     )
     SORTKEY( sp_start_time, sp_user_id );
 """)
@@ -79,11 +79,11 @@ songplay_table_create = ("""
 user_table_create = ("""
     CREATE TABLE IF NOT EXISTS users
     (
-        u_user_id       INTEGER         NOT NULL    SORTKEY,
-        u_first_name    VARCHAR         NOT NULL,
-        u_last_name     VARCHAR         NOT NULL,
-        u_gender        VARCHAR(1),
-        u_level         VARCHAR(8)      NOT NULL
+        u_user_id       INTEGER             NOT NULL    SORTKEY,
+        u_first_name    VARCHAR(MAX)        NOT NULL,
+        u_last_name     VARCHAR(MAX)        NOT NULL,
+        u_gender        VARCHAR(8),
+        u_level         VARCHAR(8)          NOT NULL
     )
     DISTSTYLE ALL;
 """)
@@ -91,9 +91,9 @@ user_table_create = ("""
 song_table_create = ("""
     CREATE TABLE IF NOT EXISTS songs
     (
-        s_song_id       VARCHAR(22)     NOT NULL    SORTKEY,
-        s_title         VARCHAR         NOT NULL,
-        s_artist_id     VARCHAR(22)     NOT NULL    DISTKEY,
+        s_song_id       VARCHAR(22)         NOT NULL    SORTKEY,
+        s_title         VARCHAR(MAX)        NOT NULL,
+        s_artist_id     VARCHAR(22)         NOT NULL    DISTKEY,
         s_year          INTEGER,
         s_duration      DOUBLE PRECISION
     );
@@ -102,9 +102,9 @@ song_table_create = ("""
 artist_table_create = ("""
     CREATE TABLE IF NOT EXISTS artists
     (
-        a_artist_id     VARCHAR(22)     NOT NULL    SORTKEY     DISTKEY,
-        a_name          VARCHAR         NOT NULL,
-        a_location      VARCHAR,
+        a_artist_id     VARCHAR(22)         NOT NULL    SORTKEY     DISTKEY,
+        a_name          VARCHAR(MAX)        NOT NULL,
+        a_location      VARCHAR(MAX),
         a_latitude      DOUBLE PRECISION,
         a_longitude     DOUBLE PRECISION
     );
@@ -155,14 +155,14 @@ songplay_table_insert = ("""
         sp_artist_id, sp_session_id, sp_location, sp_user_agent
     )
     (
-        SELECT      stg_e_ts, stg_e_user_id, stg_e_level, stg_s_song_id,
-                    stg_s_artist_id, stg_e_session_id, stg_e_location, stg_e_user_agent
+        SELECT      ts, userId, level, song_id,
+                    artist_id, sessionId, location, userAgent
         FROM        (
                         SELECT  *
                         FROM    staging_events
-                        WHERE   stg_e_page = 'NextSong'
+                        WHERE   page = 'NextSong'
                     ), staging_songs
-        WHERE       stg_e_song = stg_s_title
+        WHERE       song = title
         ORDER BY    (sp_start_time, sp_user_id)
     )
 """)
@@ -171,39 +171,42 @@ user_table_insert = ("""
     INSERT INTO users (
         u_user_id, u_first_name, u_last_name, u_gender, u_level
     )
-    SELECT  DISTINCT stg_e_user_id, 
-            stg_e_first_name, stg_e_last_name, stg_e_gender, stg_e_level
+    SELECT  DISTINCT CAST(userId),
+            firstName, lastName, gender, level
     FROM    staging_events
-    WHERE   stg_e_page = 'NextSong'
+    WHERE   page = 'NextSong' AND
+            userId IS NOT NULL
 """)
 
 song_table_insert = ("""
     INSERT INTO songs (
         s_song_id, s_title, s_artist_id, s_year, s_duration
     )
-    SELECT  DISTINCT stg_s_song_id,
-            stg_s_title, stg_s_artist_id, stg_s_year, stg_s_duration
+    SELECT  DISTINCT song_id,
+            title, artist_id, year, duration
     FROM    staging_songs
+    WHERE   song_id IS NOT NULL;
 """)
 
 artist_table_insert = ("""
     INSERT INTO artists (
         a_artist_id, a_name, a_location, a_latitude, a_longitude
     )
-    SELECT  DISTINCT stg_s_artist_id,
-            stg_s_artist_name, stg_s_artist_location,
-            stg_s_artist_latitude, stg_s_artist_longitude
+    SELECT  DISTINCT artist_id,
+            artist_name, artist_location,
+            artist_latitude, artist_longitude
     FROM    staging_songs
+    WHERE   artist_id IS NOT NULL;
 """)
 
 time_table_insert = ("""
     INSERT INTO times(
         t_start_time, t_hour, t_day, t_week, t_month, t_year, t_weekday   
     )
-    SELECT  DISTINCT stg_e_ts,
-
+    SELECT  DISTINCT ts,
+            SELECT TIMESTAMP 'epoch' + 1541122241796/1000 * INTERVAL '1 second' AS date
     FROM    staging_events
-    WHERE   stg_e_page = 'NextSong'
+    WHERE   page = 'NextSong';
 """)
 
 #------------------------------------------------------------------------------
