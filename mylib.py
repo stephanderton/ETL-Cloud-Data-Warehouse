@@ -1,24 +1,45 @@
 import logging
 import time
 
-LOGFILE     = "./logs/test-{}.log".format(time.strftime('%Y%m%d'))
+
+def log_file_name():
+    """
+    Return the logfile path for the **current** date.
+
+    """
+    return "./logs/test-{}.log".format(time.strftime('%Y%m%d'))
+
+
+def setup_logger(logfile):
+    """
+    Create instances of logger and file handler.
+    Create formatter and add to file handler.
+    Add file handler to logger instance and set level to info.
+
+    """
+    fl = logging.getLogger()
+    fh = logging.FileHandler(logfile)
+    formatter = logging.Formatter(fmt = FORMAT, datefmt = FORMAT_DATE)
+    fh.setFormatter(formatter)
+    fl.addHandler(fh)
+    fl.setLevel(logging.INFO)
+
+    return fl
+
+
+def reset_logger():
+    """
+    Reset the logger object.
+    This needs to be done when the date changes at midnight!
+
+    """
+    logfile = log_file_name()
+    return setup_logger(logfile)
+
+# ------------------------------------------------------------------------------
+
+LOGFILE     = log_file_name()
 FORMAT      = '%(asctime)s :  %(message)s'
 FORMAT_DATE = '%I:%M:%S %p'
 
-# create logger
-logger = logging.getLogger()
-
-# create file handler
-fh = logging.FileHandler(LOGFILE)
-
-# create formatter
-formatter = logging.Formatter(fmt = FORMAT, datefmt = FORMAT_DATE)
-
-# add formatter to fh
-fh.setFormatter(formatter)
-
-# add fh to logger
-logger.addHandler(fh)
-
-# set level to info
-logger.setLevel(logging.INFO)
+logger = setup_logger(LOGFILE)

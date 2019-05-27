@@ -155,15 +155,18 @@ songplay_table_insert = ("""
         sp_artist_id, sp_session_id, sp_location, sp_user_agent
     )
     (
-        SELECT      ts, userId, level, song_id,
-                    artist_id, sessionId, location, userAgent
+        SELECT      TIMESTAMP 'epoch' + e.ts/1000 * INTERVAL '1 second',
+                    e.userId::INTEGER,
+                    e.level, 
+                    s.song_id, s.artist_id,
+                    e.sessionId, e.location, e.userAgent
         FROM        (
                         SELECT  *
                         FROM    staging_events
                         WHERE   page = 'NextSong'
-                    ), staging_songs
-        WHERE       song = title
-        ORDER BY    (sp_start_time, sp_user_id)
+                    ) AS e, staging_songs AS s
+        WHERE       e.song = s.title  AND
+                    e.artist = s.artist_name
     )
 """)
 
@@ -171,7 +174,7 @@ user_table_insert = ("""
     INSERT INTO users (
         u_user_id, u_first_name, u_last_name, u_gender, u_level
     )
-    SELECT  DISTINCT CAST(userId),
+    SELECT  DISTINCT userId::INTEGER,
             firstName, lastName, gender, level
     FROM    staging_events
     WHERE   page = 'NextSong' AND
@@ -200,13 +203,56 @@ artist_table_insert = ("""
 """)
 
 time_table_insert = ("""
-    INSERT INTO times(
+    INSERT INTO time(
         t_start_time, t_hour, t_day, t_week, t_month, t_year, t_weekday   
     )
-    SELECT  DISTINCT ts,
-            SELECT TIMESTAMP 'epoch' + 1541122241796/1000 * INTERVAL '1 second' AS date
-    FROM    staging_events
-    WHERE   page = 'NextSong';
+    (
+        WITH t1 AS (
+                SELECT  TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS date
+                FROM    staging_events
+                WHERE   page = 'NextSong'
+        )
+
+        SELECT  DISTINCT t1.date,
+                DATE_PART(hour, t1.date)::INT AS hour,
+                DATE_PART(day, t1.date)::INT AS day,
+                DATE_PART(week, t1.date)::INT AS week,
+                DATE_PART(month, t1.date)::INT AS month,
+                DATE_PART(year, t1.date)::INT AS year,
+                DATE_PART(weekday, t1.date)::INT AS weekday
+        FROM    t1
+    );
+""")
+
+#------------------------------------------------------------------------------
+# COUNT TABLE ROWS
+
+staging_events_table_count = ("""
+    SELECT COUNT(*) FROM staging_events
+""")
+
+staging_songs_table_count = ("""
+    SELECT COUNT(*) FROM staging_songs
+""")
+
+songplay_table_count = ("""
+    SELECT COUNT(*) FROM songplays
+""")
+
+user_table_count = ("""
+    SELECT COUNT(*) FROM users
+""")
+
+song_table_count = ("""
+    SELECT COUNT(*) FROM songs
+""")
+
+artist_table_count = ("""
+    SELECT COUNT(*) FROM artists
+""")
+
+time_table_count = ("""
+    SELECT COUNT(*) FROM time
 """)
 
 #------------------------------------------------------------------------------
@@ -229,18 +275,22 @@ drop_table_queries = [staging_events_table_drop,
                       time_table_drop
                      ]
 
-# copy_table_queries = [staging_events_copy, 
-#                       staging_songs_copy
-#                      ]
-copy_table_queries = [staging_songs_copy
+copy_table_queries = [staging_events_copy, 
+                      staging_songs_copy
                      ]
 
-# insert_table_queries = [songplay_table_insert, 
-#                         user_table_insert,
-#                         song_table_insert, 
-#                         artist_table_insert, 
-#                         time_table_insert
-#                        ]
-insert_table_queries = [song_table_insert, 
-                        artist_table_insert
+insert_table_queries = [songplay_table_insert, 
+                        user_table_insert,
+                        song_table_insert, 
+                        artist_table_insert, 
+                        time_table_insert
                        ]
+
+count_table_queries = [staging_events_table_count, 
+                       staging_songs_table_count, 
+                       songplay_table_count, 
+                       user_table_count, 
+                       song_table_count, 
+                       artist_table_count, 
+                       time_table_count
+                      ]
