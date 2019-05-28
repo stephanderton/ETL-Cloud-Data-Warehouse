@@ -17,7 +17,7 @@ artist_table_drop         = "DROP TABLE IF EXISTS artists"
 time_table_drop           = "DROP TABLE IF EXISTS time"
 
 #------------------------------------------------------------------------------
-# CREATE TABLES
+# CREATE TABLES - STAGING
 
 staging_events_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_events
@@ -59,6 +59,9 @@ staging_songs_table_create = ("""
         year               INTEGER
     );
 """)
+
+#------------------------------------------------------------------------------
+# CREATE TABLES - ANALYTICS
 
 songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS songplays
@@ -150,7 +153,8 @@ staging_songs_copy = ("""
 # FINAL TABLES
 
 songplay_table_insert = ("""
-    INSERT INTO songplays (
+    INSERT INTO songplays
+    (
         sp_start_time, sp_user_id, sp_level, sp_song_id, 
         sp_artist_id, sp_session_id, sp_location, sp_user_agent
     )
@@ -164,14 +168,16 @@ songplay_table_insert = ("""
                         SELECT  *
                         FROM    staging_events
                         WHERE   page = 'NextSong'
-                    ) AS e, staging_songs AS s
+                    ) AS e, 
+                    staging_songs AS s
         WHERE       e.song = s.title  AND
                     e.artist = s.artist_name
     )
 """)
 
 user_table_insert = ("""
-    INSERT INTO users (
+    INSERT INTO users
+    (
         u_user_id, u_first_name, u_last_name, u_gender, u_level
     )
     SELECT  DISTINCT userId::INTEGER,
@@ -182,7 +188,8 @@ user_table_insert = ("""
 """)
 
 song_table_insert = ("""
-    INSERT INTO songs (
+    INSERT INTO songs
+    (
         s_song_id, s_title, s_artist_id, s_year, s_duration
     )
     SELECT  DISTINCT song_id,
@@ -192,7 +199,8 @@ song_table_insert = ("""
 """)
 
 artist_table_insert = ("""
-    INSERT INTO artists (
+    INSERT INTO artists
+    (
         a_artist_id, a_name, a_location, a_latitude, a_longitude
     )
     SELECT  DISTINCT artist_id,
@@ -203,7 +211,8 @@ artist_table_insert = ("""
 """)
 
 time_table_insert = ("""
-    INSERT INTO time(
+    INSERT INTO time
+    (
         t_start_time, t_hour, t_day, t_week, t_month, t_year, t_weekday   
     )
     (
@@ -256,7 +265,7 @@ time_table_count = ("""
 """)
 
 #------------------------------------------------------------------------------
-# QUERY LISTS
+# QUERY LISTS - SETUP TABLES
 
 create_table_queries = [staging_events_table_create, 
                         staging_songs_table_create, 
@@ -285,6 +294,9 @@ insert_table_queries = [songplay_table_insert,
                         artist_table_insert, 
                         time_table_insert
                        ]
+
+#------------------------------------------------------------------------------
+# QUERY LISTS - ANALYTICS
 
 count_table_queries = [staging_events_table_count, 
                        staging_songs_table_count, 

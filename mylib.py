@@ -2,12 +2,15 @@ import logging
 import time
 
 
+LOGFILE_NAME = 'etl'
+
+
 def log_file_name():
     """
-    Return the logfile path for the **current** date.
+    Return the logfile pathname for the **current** date.
 
     """
-    return "./logs/test-{}.log".format(time.strftime('%Y%m%d'))
+    return "./logs/{}-{}.log".format(LOGFILE_NAME, time.strftime('%Y%m%d'))
 
 
 def setup_logger(logfile):
@@ -15,6 +18,12 @@ def setup_logger(logfile):
     Create instances of logger and file handler.
     Create formatter and add to file handler.
     Add file handler to logger instance and set level to info.
+
+    Arguments:
+        logfile - file pathname for logfile
+
+    Return:
+        fl - Logger object
 
     """
     fl = logging.getLogger()
@@ -32,9 +41,21 @@ def reset_logger():
     Reset the logger object.
     This needs to be done when the date changes at midnight!
 
+    Return:
+        fl - Logger object
+
     """
     logfile = log_file_name()
     return setup_logger(logfile)
+
+
+def log_timestamp():
+    """
+    Write the current timestamp to the logfile
+
+    """
+    logger.info(time.strftime('%Y-%m-%d  %I:%M:%S %p'))
+
 
 # ------------------------------------------------------------------------------
 
