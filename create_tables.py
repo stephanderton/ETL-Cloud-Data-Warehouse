@@ -1,6 +1,10 @@
 import configparser
 import psycopg2
 from sql_queries import create_table_queries, drop_table_queries
+import time
+import re
+import mylib
+from mylib import logger
 
 
 def drop_tables(cur, conn):
@@ -18,15 +22,20 @@ def drop_tables(cur, conn):
         none
      
     """
-        
+    logger.info('Drop existing tables...')
+
     for query in drop_table_queries:
+        # the table name is the 5th word in the query string
+        table = re.findall(r'\w+', query)[4]
+        logger.info('delete table [ {} ]'.format(table))
+
         try:
             cur.execute(query)
             conn.commit()
         except psycopg2.Error as e: 
-            print("Error: Dropping table")
-            print(query)
+            logger.info('Error: Dropping table [ {} ]'.format(table))
             print(e)
+            print(query)
 
 
 def create_tables(cur, conn):
@@ -45,15 +54,20 @@ def create_tables(cur, conn):
         none
 
     """
-        
+    logger.info('Create tables...')
+
     for query in create_table_queries:
+        # the table name is the 6th word in the query string
+        table = re.findall(r'\w+', query)[5]
+        logger.info('create table [ {} ]'.format(table))
+
         try:
             cur.execute(query)
             conn.commit()
         except psycopg2.Error as e: 
-            print("Error: Issue creating table")
-            print(query)
+            logger.info('Error: Creating table [ {} ]'.format(table))
             print(e)
+            print(query)
 
 
 def main():
@@ -65,6 +79,11 @@ def main():
 
     """
     
+    logger.info('---[ Create Tables ]---')
+    mylib.log_timestamp()
+    print("Logfile:  " + mylib.log_file_name())
+
+    # read config parameters for database connection string
     config = configparser.ConfigParser()
     config.read('dwh.cfg')
 
@@ -76,13 +95,14 @@ def main():
         print(conn_string)
 
     except Exception as e:
-        print("Error: Could not make connection to the sparkify DWH")
+        logger.info("Error: Could not make connection to the sparkify DB")
         print(e)
 
     drop_tables(cur, conn)
     create_tables(cur, conn)
 
     conn.close()
+    logger.info('DB connection closed')
 
 
 if __name__ == "__main__":
