@@ -159,19 +159,20 @@ songplay_table_insert = ("""
         sp_artist_id, sp_session_id, sp_location, sp_user_agent
     )
     (
-        SELECT      TIMESTAMP 'epoch' + e.ts/1000 * INTERVAL '1 second',
-                    e.userId::INTEGER,
-                    e.level, 
-                    s.song_id, s.artist_id,
-                    e.sessionId, e.location, e.userAgent
-        FROM        (
-                        SELECT  *
-                        FROM    staging_events
-                        WHERE   page = 'NextSong'
-                    ) AS e, 
-                    staging_songs AS s
-        WHERE       e.song = s.title  AND
-                    e.artist = s.artist_name
+        WITH e  AS (
+                SELECT  *
+                FROM    staging_events
+                WHERE   page = 'NextSong'
+        )
+
+        SELECT  TIMESTAMP 'epoch' + e.ts/1000 * INTERVAL '1 second',
+                e.userId::INTEGER,
+                e.level, 
+                s.song_id, s.artist_id,
+                e.sessionId, e.location, e.userAgent
+        FROM    e, staging_songs AS s
+        WHERE   e.song = s.title  AND
+                e.artist = s.artist_name
     )
 """)
 
