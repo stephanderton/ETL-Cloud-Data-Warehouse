@@ -58,7 +58,7 @@ This schema is not fully normalized, as the `level` feature is replicated in the
 
 ## ETL Pipeline
 
-The ETL pipeline extracts data from files in two local directories, /data/log_data and /data/song_data, and then transforms the data and loads into the five tables of the **sparkifydb** database. This is handled by three files using Python and SQL.
+The ETL pipeline extracts data from directories in S3, stages them in Redshift, and then transforms and loads the data into the five tables of the **sparkifydb** database. This is handled by three files using Python and SQL.
 
 | Step  | File             | Purpose                                                      |
 | ----- | ---------------- | ------------------------------------------------------------ |
