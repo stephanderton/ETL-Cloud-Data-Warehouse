@@ -298,10 +298,10 @@ top_10_users = ("""
 
     SELECT   DISTINCT( u_first_name || ' ' || u_last_name ) AS "user name",
              u_user_id              AS "user ID",
-             COUNT( sp_session_id ) AS "session count"
+             COUNT( sp_session_id ) AS "song count"
     FROM     songplays_ext
     GROUP BY "user ID", "user name"
-    ORDER BY "session count" DESC
+    ORDER BY "song count" DESC
     LIMIT    10;
 """)
 
@@ -410,4 +410,3 @@ sample_queries = [top_10_songs,
                   top_user_id,
                   top_5_sessions_top_user_49
                  ]
-                 
