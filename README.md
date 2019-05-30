@@ -195,9 +195,16 @@ $
 
 ## Sample Queries
 
+Here are some sample queries that can be run to test out the final dimensional tables:
+
+- Return the top 10 most frequently played songs, based on the song ID.
+- Return the top 10 users based on the total number of songs they have listened to in the app.
+- Get the user ID for the user who has listened to the most number of songs in the app.
+- Return the top 5 sessions with the most number of songs, for the top user (found by the previous query) with ID = 49, the user who has listened to the most number of songs.
+
 ### Top 10 Songs in songplays
 
-Displays the top 10 most frequently played songs, based on the song ID.
+Return the top 10 most frequently played songs, based on the song ID.
 
 **Note**: some song titles appear more than once if there are multiple versions associated with variations in the artist ID.
 
@@ -214,10 +221,10 @@ top_10_songs = ("""
 
     SELECT   s_title    AS "song title",
              a_name     AS "artist name",
-             COUNT(*) count
+             COUNT(*)   AS count
     FROM     songplays_ext
     GROUP BY s_title, a_name
-    ORDER BY count DESC, s_title
+    ORDER BY count DESC, s_title, a_name
     LIMIT    10;
 """)
 ```
@@ -230,23 +237,23 @@ Output:  10 rows
 | Catch You Baby (Steve Pitron & Max Sanna Radio Edit) |                  Lonnie Gordon |     9 |
 |                                  I CAN'T GET STARTED |                     Ron Carter |     9 |
 |    Nothin' On You [feat. Bruno Mars] (Album Version) |                          B.o.B |     8 |
-|                             Hey Daddy (Daddy's Home) | Usher featuring Jermaine Dupri |     6 |
 |                             Hey Daddy (Daddy's Home) |                          Usher |     6 |
-|                                         Make Her Say | Kid Cudi / Kanye West / Common |     5 |
+|                             Hey Daddy (Daddy's Home) | Usher featuring Jermaine Dupri |     6 |
 |                                         Make Her Say |                       Kid Cudi |     5 |
+|                                         Make Her Say | Kid Cudi / Kanye West / Common |     5 |
 |                                         Up Up & Away |                       Kid Cudi |     5 |
 |                                         Up Up & Away | Kid Cudi / Kanye West / Common |     5 |
 
-The output shows how there is a real need to clean the data; there are many songs that have variations in the artist_id.
+The output shows how there is a real need to clean the data; there are many songs that have duplicates with variations on the artist name.
 
 ### Top 10 Users in songplays
 
-Display the top 10 users based on the total number of songs they have listened to in the app.
+Return the top 10 users based on the total number of songs they have listened to in the app.
 
 ```sql
 top_10_users = ("""
     WITH songplays_ext AS (
-             SELECT sp_session_id, u_first_name, u_last_name, u_user_id
+             SELECT sp_songplay_id, u_first_name, u_last_name, u_user_id
              FROM   songplays
              JOIN   users
              ON     sp_user_id  = u_user_id  AND
@@ -254,11 +261,11 @@ top_10_users = ("""
         )
 
     SELECT   DISTINCT( u_first_name || ' ' || u_last_name ) AS "user name",
-             u_user_id              AS "user ID",
-             COUNT( sp_session_id ) AS "song count"
+             u_user_id              						AS "user ID",
+             COUNT(*)				 						AS "song count"
     FROM     songplays_ext
     GROUP BY "user ID", "user name"
-    ORDER BY "song count" DESC
+	ORDER BY "song count" DESC, "user name"
     LIMIT    10;
 """)
 ```
@@ -274,9 +281,9 @@ Output:  10 rows
 |        Jacob Klein |      73 |         18 |
 | Mohammad Rodriguez |      88 |         17 |
 |          Lily Koch |      15 |         15 |
+|   Jacqueline Lynch |      29 |         13 |
 |      Layla Griffin |      24 |         13 |
 |      Matthew Jones |      36 |         13 |
-|   Jacqueline Lynch |      29 |         13 |
 
 Chloe has listened to a total of 42 songs, and Kate a total of 32.
 
@@ -304,7 +311,7 @@ top_user_id = ("""
             FROM     session_counts
         )
 
-    SELECT  u_user_id AS top_user
+    SELECT  u_user_id AS "top user id"
     FROM    session_counts
     WHERE   count = ( 
             SELECT   max_count
@@ -315,13 +322,13 @@ top_user_id = ("""
 
 Output:  1 rows
 
-| top_user |
-| -------: |
-|       49 |
+| top user id |
+| ----------: |
+|          49 |
 
 ### Top 5 sessions with most songs for Top User (ID = 49)
 
-Display the top 5 sessions with the most number of songs, for the top user with ID = 49, the user who has listened to the most number of songs.
+Return the top 5 sessions with the most number of songs, for the top user with ID = 49, the user who has listened to the most number of songs.
 
 ```sql
 top_5_sessions_top_user_49 = ("""
@@ -342,15 +349,15 @@ top_5_sessions_top_user_49 = ("""
         )
 
     SELECT   (u_first_name || ' ' || u_last_name) AS "user name",
-             sp_session_id      AS "session ID",
+             sp_session_id      				  AS "session ID",
              (DATE_PART('year', 
                          sp_start_time) || '-' || DATE_PART('month', 
                          sp_start_time) || '-' || DATE_PART('day', 
-                         sp_start_time))::date,
-             COUNT(s_title)     AS "song count"
+                         sp_start_time))		  AS date,
+             COUNT(s_title)     				  AS "song count"
     FROM     user_sessions
     GROUP BY sp_session_id, date, "user name"
-    ORDER BY "song count" DESC
+    ORDER BY "song count" DESC, date
     LIMIT    5;
 """)
 
@@ -363,7 +370,7 @@ Output:  5 rows
 | Chloe Cuevas |       1041 | 2018-11-29 |         11 |
 | Chloe Cuevas |       1079 | 2018-11-30 |          5 |
 | Chloe Cuevas |        816 | 2018-11-21 |          3 |
-| Chloe Cuevas |        987 | 2018-11-27 |          2 |
-| Chloe Cuevas |       1114 | 2018-11-30 |          2 |
+| Chloe Cuevas |        576 | 2018-11-14 |          2 |
+| Chloe Cuevas |        758 | 2018-11-20 |          2 |
 
 In her longest session, on November 29 in 2018, Chloe listened to 11 songs.

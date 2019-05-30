@@ -66,7 +66,7 @@ staging_songs_table_create = ("""
 songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS songplays
     (
-        sp_songplay_id      INTEGER             IDENTITY(0,1),
+        sp_songplay_id      INTEGER             IDENTITY(0,1)   PRIMARY KEY,
         sp_start_time       TIMESTAMP           NOT NULL,
         sp_user_id          INTEGER             NOT NULL,
         sp_level            VARCHAR(8)          NOT NULL,
@@ -82,11 +82,11 @@ songplay_table_create = ("""
 user_table_create = ("""
     CREATE TABLE IF NOT EXISTS users
     (
-        u_user_id       INTEGER             NOT NULL    SORTKEY,
-        u_first_name    VARCHAR(MAX)        NOT NULL,
-        u_last_name     VARCHAR(MAX)        NOT NULL,
+        u_user_id       INTEGER         NOT NULL    SORTKEY     PRIMARY KEY,
+        u_first_name    VARCHAR(MAX)    NOT NULL,
+        u_last_name     VARCHAR(MAX)    NOT NULL,
         u_gender        VARCHAR(8),
-        u_level         VARCHAR(8)          NOT NULL
+        u_level         VARCHAR(8)      NOT NULL
     )
     DISTSTYLE ALL;
 """)
@@ -94,9 +94,9 @@ user_table_create = ("""
 song_table_create = ("""
     CREATE TABLE IF NOT EXISTS songs
     (
-        s_song_id       VARCHAR(22)         NOT NULL    SORTKEY,
-        s_title         VARCHAR(MAX)        NOT NULL,
-        s_artist_id     VARCHAR(22)         NOT NULL    DISTKEY,
+        s_song_id       VARCHAR(22)     NOT NULL    SORTKEY     PRIMARY KEY,
+        s_title         VARCHAR(MAX)    NOT NULL,
+        s_artist_id     VARCHAR(22)     NOT NULL    DISTKEY,
         s_year          INTEGER,
         s_duration      DOUBLE PRECISION
     );
@@ -105,8 +105,8 @@ song_table_create = ("""
 artist_table_create = ("""
     CREATE TABLE IF NOT EXISTS artists
     (
-        a_artist_id     VARCHAR(22)         NOT NULL    SORTKEY     DISTKEY,
-        a_name          VARCHAR(MAX)        NOT NULL,
+        a_artist_id     VARCHAR(22)     NOT NULL    SORTKEY     DISTKEY     PRIMARY KEY,
+        a_name          VARCHAR(MAX)    NOT NULL,
         a_location      VARCHAR(MAX),
         a_latitude      DOUBLE PRECISION,
         a_longitude     DOUBLE PRECISION
@@ -116,7 +116,7 @@ artist_table_create = ("""
 time_table_create = ("""
     CREATE TABLE IF NOT EXISTS time
     (
-        t_start_time    TIMESTAMP       NOT NULL    SORTKEY,
+        t_start_time    TIMESTAMP       NOT NULL    SORTKEY     PRIMARY KEY,
         t_hour          SMALLINT        NOT NULL,
         t_day           SMALLINT        NOT NULL,
         t_week          SMALLINT        NOT NULL,
@@ -170,7 +170,8 @@ songplay_table_insert = ("""
                 e.level, 
                 s.song_id, s.artist_id,
                 e.sessionId, e.location, e.userAgent
-        FROM    e, staging_songs AS s
+        FROM    e,
+                staging_songs AS s
         WHERE   e.song = s.title  AND
                 e.artist = s.artist_name
     )
@@ -217,20 +218,14 @@ time_table_insert = ("""
         t_start_time, t_hour, t_day, t_week, t_month, t_year, t_weekday   
     )
     (
-        WITH t1 AS (
-                SELECT  TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS date
-                FROM    staging_events
-                WHERE   page = 'NextSong'
-        )
-
-        SELECT  DISTINCT t1.date,
-                DATE_PART(hour, t1.date)::INT AS hour,
-                DATE_PART(day, t1.date)::INT AS day,
-                DATE_PART(week, t1.date)::INT AS week,
-                DATE_PART(month, t1.date)::INT AS month,
-                DATE_PART(year, t1.date)::INT AS year,
-                DATE_PART(weekday, t1.date)::INT AS weekday
-        FROM    t1
+        SELECT  DISTINCT sp_start_time          AS date,
+                DATE_PART(hour, date)::INT      AS hour,
+                DATE_PART(day, date)::INT       AS day,
+                DATE_PART(week, date)::INT      AS week,
+                DATE_PART(month, date)::INT     AS month,
+                DATE_PART(year, date)::INT      AS year,
+                DATE_PART(weekday, date)::INT   AS weekday
+        FROM    songplays
     );
 """)
 
@@ -280,16 +275,16 @@ top_10_songs = ("""
 
     SELECT   s_title    AS "song title",
              a_name     AS "artist name",
-             COUNT(*) count
+             COUNT(*)   AS count
     FROM     songplays_ext
     GROUP BY s_title, a_name
-    ORDER BY count DESC, s_title
+    ORDER BY count DESC, s_title, a_name
     LIMIT    10;
 """)
 
 top_10_users = ("""
     WITH songplays_ext AS (
-             SELECT sp_session_id, u_first_name, u_last_name, u_user_id
+             SELECT sp_songplay_id, u_first_name, u_last_name, u_user_id
              FROM   songplays
              JOIN   users
              ON     sp_user_id  = u_user_id  AND
@@ -297,11 +292,11 @@ top_10_users = ("""
         )
 
     SELECT   DISTINCT( u_first_name || ' ' || u_last_name ) AS "user name",
-             u_user_id              AS "user ID",
-             COUNT( sp_session_id ) AS "song count"
+             u_user_id                                      AS "user ID",
+             COUNT(*)                                       AS "song count"
     FROM     songplays_ext
     GROUP BY "user ID", "user name"
-    ORDER BY "song count" DESC
+    ORDER BY "song count" DESC, "user name"
     LIMIT    10;
 """)
 
@@ -349,16 +344,16 @@ top_5_sessions_top_user_49 = ("""
             ON      sp_song_id  = s_song_id
         )
 
-    SELECT   (u_first_name || ' ' || u_last_name) AS "user name",
-             sp_session_id      AS "session ID",
+    SELECT   (u_first_name || ' ' || u_last_name)   AS "user name",
+             sp_session_id                          AS "session ID",
              (DATE_PART('year', 
-                         sp_start_time) || '-' || DATE_PART('month', 
-                                                             sp_start_time) || '-' || DATE_PART('day', 
-                                                                                                 sp_start_time))::date,
-             COUNT(s_title)     AS "song count"
+                        sp_start_time) || '-' || DATE_PART('month', 
+                        sp_start_time) || '-' || DATE_PART('day', 
+                        sp_start_time))             AS date,
+             COUNT(s_title)                         AS "song count"
     FROM     user_sessions
     GROUP BY sp_session_id, date, "user name"
-    ORDER BY "song count" DESC
+    ORDER BY "song count" DESC, date
     LIMIT    5;
 """)
 
@@ -392,6 +387,22 @@ insert_table_queries = [songplay_table_insert,
                         artist_table_insert, 
                         time_table_insert
                        ]
+
+#------------------------------------------------------------------------------
+# QUERY LISTS - SETUP - dimensional tables only; leaves staging tables alone
+
+create_db_table_queries  = [songplay_table_create, 
+                            user_table_create, 
+                            song_table_create, 
+                            artist_table_create, 
+                            time_table_create
+                           ]
+drop_db_table_queries  = [songplay_table_drop,
+                          user_table_drop, 
+                          song_table_drop, 
+                          artist_table_drop, 
+                          time_table_drop
+                         ]
 
 #------------------------------------------------------------------------------
 # QUERY LISTS - ANALYTICS
