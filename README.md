@@ -72,6 +72,7 @@ The ETL pipeline extracts data from directories in S3, stages them on Redshift, 
 | **1** | create_tables.py | Creates and initializes the staging tables and final dimensional tables for the **sparkify** database. |
 | **2** | etl.py           | Reads and processes files from the song_data and log_data directories on S3, and loads them into the **sparkify** database tables. |
 | -     | sql_queries.py   | Contains all SQL queries. This file is imported into create_tables.py and etl.py. |
+| -     | dwh.cfg          | Configuration file required for launching Redshift cluster and accessing datasets on S3. |
 | \*    | mylib.py         | Library with methods for logging events during the ETL process. |
 
 \* *Additional code, not part of the project requirements.*
