@@ -12,7 +12,7 @@ from sql_queries import count_table_queries
 
 def load_staging_tables(cur, conn):
     """
-    Load raw Sparkify data to staging tables.
+    Load raw data to staging tables for Sparkify DB.
     
     Execute each query from the *copy_table_queries* list; each query
     loads a specific staging table in the data warehouse.
@@ -31,11 +31,12 @@ def load_staging_tables(cur, conn):
     for query in copy_table_queries:
         # the table name is the 2nd word in the query string
         table = re.findall(r'\w+', query)[1]
-        logger.info('load staging table [ {} ]'.format(table))
+        logger.info('load staging table [ {} ]...'.format(table))
 
         try:
             cur.execute(query)
             conn.commit()
+            
         except psycopg2.Error as e: 
             logger.info('Error: Staging table [ {} ]'.format(table))
             print(e)
@@ -68,6 +69,7 @@ def insert_tables(cur, conn):
         try:
             cur.execute(query)
             conn.commit()
+
         except psycopg2.Error as e: 
             logger.info('Error: Inserting to table [ {} ]'.format(table))
             print(e)
@@ -99,13 +101,14 @@ def count_table_rows(cur, conn):
         try:
             cur.execute(query)
             conn.commit()
+
             # the query returns the row count
             result = cur.fetchall()
             rows = result[0][0]
             logger.info("table count [ {} ] :  {}".format(table, rows))
 
         except psycopg2.Error as e: 
-            logger.info('Error: Issue counting table [ {} ]'.format(table))
+            logger.info('Error :  Issue counting table [ {} ]'.format(table))
             print(e)
             print(query)
 
@@ -128,13 +131,19 @@ def disable_result_cache(cur, conn):
         logger.info('Disable result cache for session')
 
     except psycopg2.Error as e: 
-        logger.info("Error: disabling result cache for session")
+        logger.info("Error :  disabling result cache for session")
         print(e)
 
 
 def log_config_params(config):
     """
-    Write the S3 configuration parameters to the logfile
+    Write the S3 configuration parameters to the logfile (logger).
+
+    Parameters:
+        config (config file object) : access to the cluster configuration settings
+
+    Returns:
+        none
 
     """
     LOG_DATA     = config['S3']['LOG_DATA']
@@ -157,7 +166,7 @@ def main():
         
     logger.info('---[ Begin ETL ]---')
     mylib.log_timestamp()
-    print("Logfile:  " + mylib.log_file_name())
+    print("Logfile:  " + mylib.get_log_file_name())
 
     # read config parameters for database connection string
     config = configparser.ConfigParser()
@@ -170,10 +179,12 @@ def main():
         conn_string = conn_string.format(*config['CLUSTER'].values())
         conn = psycopg2.connect( conn_string )
         cur = conn.cursor()
+
         print(conn_string)
+        logger.info('DB connection :  open')
 
     except Exception as e:
-        logger.info("Error: Could not make connection to the sparkify DB")
+        logger.info("Error :  Could not make connection to the sparkify DB")
         print(e)
 
     disable_result_cache(cur, conn)
@@ -185,11 +196,11 @@ def main():
     print("Insert into Final tables...")
     insert_tables(cur, conn)
 
-    # Query table counts to verify load
+    print('Check table counts...')
     count_table_rows(cur, conn)
 
     conn.close()
-    logger.info('DB connection closed')
+    logger.info('DB connection :  closed')
 
 
 if __name__ == "__main__":

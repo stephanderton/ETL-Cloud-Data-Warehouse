@@ -266,6 +266,103 @@ time_table_count = ("""
 """)
 
 #------------------------------------------------------------------------------
+# SAMPLE QUERIES
+
+top_10_songs = ("""
+    WITH songplays_ext  AS (
+             SELECT *
+             FROM   songplays
+             JOIN   songs
+             ON     sp_song_id   = s_song_id
+             JOIN   artists
+             ON     sp_artist_id = a_artist_id
+    )
+
+    SELECT   s_title    AS "song title",
+             a_name     AS "artist name",
+             COUNT(*) count
+    FROM     songplays_ext
+    GROUP BY s_title, a_name
+    ORDER BY count DESC, s_title
+    LIMIT    10;
+""")
+
+top_10_users = ("""
+    WITH songplays_ext AS (
+             SELECT sp_session_id, u_first_name, u_last_name, u_user_id
+             FROM   songplays
+             JOIN   users
+             ON     sp_user_id  = u_user_id  AND
+                    sp_level    = u_level
+        )
+
+    SELECT   DISTINCT( u_first_name || ' ' || u_last_name ) AS "user name",
+             u_user_id              AS "user ID",
+             COUNT( sp_session_id ) AS "session count"
+    FROM     songplays_ext
+    GROUP BY "user ID", "user name"
+    ORDER BY "session count" DESC
+    LIMIT    10;
+""")
+
+top_user_id = ("""
+    WITH songplays_ext AS (
+            SELECT  sp_session_id, u_user_id
+            FROM    songplays
+            JOIN    users
+            ON      sp_user_id = u_user_id  AND
+                    sp_level   = u_level
+        ),
+        session_counts AS (
+            SELECT   u_user_id,
+                     COUNT( sp_session_id ) AS count
+            FROM     songplays_ext
+            GROUP BY u_user_id
+        ),
+        max_session  AS (
+            SELECT   MAX(count) AS max_count
+            FROM     session_counts
+        )
+
+    SELECT  u_user_id AS top_user
+    FROM    session_counts
+    WHERE   count = ( 
+            SELECT   max_count
+            FROM     max_session
+    );
+""")
+
+top_5_sessions_top_user_49 = ("""
+    WITH songplays_user AS (
+            SELECT  *
+            FROM    songplays
+            WHERE   sp_user_id  = 49
+        ),
+        user_sessions AS (
+            SELECT  u_first_name, u_last_name, 
+                    sp_session_id, sp_start_time, s_title
+            FROM    songplays_user
+            JOIN    users
+            ON      sp_user_id  = u_user_id  AND
+                    sp_level    = u_level
+            JOIN    songs
+            ON      sp_song_id  = s_song_id
+        )
+
+    SELECT   (u_first_name || ' ' || u_last_name) AS "user name",
+             sp_session_id      AS "session ID",
+             (DATE_PART('year', 
+                         sp_start_time) || '-' || DATE_PART('month', 
+                                                             sp_start_time) || '-' || DATE_PART('day', 
+                                                                                                 sp_start_time))::date,
+             COUNT(s_title)     AS "song count"
+    FROM     user_sessions
+    GROUP BY sp_session_id, date, "user name"
+    ORDER BY "song count" DESC
+    LIMIT    5;
+""")
+
+#------------------------------------------------------------------------------
 # QUERY LISTS - SETUP TABLES
 
 create_table_queries = [staging_events_table_create, 
@@ -307,3 +404,10 @@ count_table_queries = [staging_events_table_count,
                        artist_table_count, 
                        time_table_count
                       ]
+
+sample_queries = [top_10_songs,
+                  top_10_users,
+                  top_user_id,
+                  top_5_sessions_top_user_49
+                 ]
+                 
